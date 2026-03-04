@@ -1,0 +1,675 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Face Recognition Attendance</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- jsPDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+input{
+  padding:12px;
+  border-radius:12px;
+  border:1px solid var(--border);
+  background:rgba(0,0,0,.4);
+  color:var(--text);
+}
+input {
+  padding:14px 16px;   /* increases height */
+  font-size:20px;      /* bigger typed text */
+  border-radius:14px;
+}
+:root{
+  --bg:#0f172a;
+  --panel:rgba(15,23,42,.85);
+  --border:rgba(255,255,255,.08);
+  --green:#22c55e;
+  --green-soft:rgba(34,197,94,.25);
+  --text:#e2e8f0;
+  --muted:#94a3b8;
+  --danger:#ef4444;
+  --radius:18px;
+  font-family:"Inter","Segoe UI",sans-serif;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:radial-gradient(circle at 20% 20%,rgba(34,197,94,.15),transparent 40%),#020617;
+  color:var(--text);
+  padding:30px;
+}
+.container{
+  max-width:1500px;
+  margin:auto;
+  display:grid;
+  grid-template-columns:1.7fr 1fr;
+  gap:26px;
+}
+.card{
+  background:var(--panel);
+  backdrop-filter:blur(20px);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:14px;
+  
+}
+h1,h3{margin:0 0 6px 0}
+.small{font-size:20px;color:var(--muted)}
+.logo{
+  width:72px;height:78px;border-radius:14px;
+  border:2px solid var(--green);
+  display:flex;align-items:center;justify-content:center;
+ font-size:30px;
+  
+}
+.video-box{
+  position:relative;border-radius:var(--radius);
+  overflow:hidden;border:1px solid var(--border);
+}
+video{width:100%;display:block}
+.scan-h,.scan-v{position:absolute;background:var(--green)}
+.scan-h{height:2px;width:100%;animation:scanH 3s linear infinite}
+.scan-v{width:2px;height:100%;animation:scanV 4s linear infinite}
+@keyframes scanH{from{top:0}to{top:100%}}
+@keyframes scanV{from{left:0}to{left:100%}}
+.controls{display:flex;gap:12px;margin-top:14px}
+button{
+  flex:1;padding:14px;border-radius:12px;border:none;
+  cursor:pointer;font-weight:600;
+  background:linear-gradient(135deg,#22c55e,#16a34a);
+  color:white;transition:.25s;
+  font-size:21px;       /* new: increases text size */
+  padding:16px 20px;    /* bigger height & width */
+  border-radius:14px;   /* slightly rounder for larger button */
+}
+
+button:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(34,197,94,.35)}
+button.secondary{background:rgba(255,255,255,.05);border:1px solid var(--border)}
+.status{
+  margin-top:12px;padding:12px;border-radius:12px;
+  background:rgba(34,197,94,.1);
+  border:1px solid var(--green-soft);
+  display:none;
+}
+form{display:flex;flex-direction:column;gap:12px}
+input{
+  padding:12px;border-radius:12px;border:1px solid var(--border);
+  background:rgba(0,0,0,.4);color:var(--text);
+}
+/* ===== TABLE DESIGN ===== */
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:15px;
+}
+
+th{
+  text-align:left;
+  padding:14px 16px;
+  font-weight:600;
+  font-size:15px;
+  color:#cbd5e1;
+  background:rgba(255,255,255,.03);
+  border-bottom:1px solid var(--border);
+}
+
+td{
+  text-align:left;
+  padding:14px 16px;
+  font-size:15px;
+  font-weight:500;
+  color:#e2e8f0;
+  border-bottom:1px solid var(--border);
+  transition:.2s ease;
+}
+
+/* Date & Time column styling */
+td:nth-child(2){
+  font-family:"Inter","Segoe UI",sans-serif;
+  letter-spacing:.4px;
+  color:#a7f3d0;
+}
+
+/* Alternating row background */
+tbody tr:nth-child(even){
+  background:rgba(255,255,255,.02);
+}
+
+/* Hover effect */
+tbody tr:hover{
+  background:rgba(34,197,94,.08);
+  transform:scale(1.01);
+}
+
+/* Scroll container */
+.scroll{
+  max-height:350px;
+  overflow:auto;
+}
+
+/* Custom scrollbar */
+.scroll::-webkit-scrollbar{
+  width:8px;
+}
+
+.scroll::-webkit-scrollbar-track{
+  background:transparent;
+}
+
+.scroll::-webkit-scrollbar-thumb{
+  background:rgba(34,197,94,.4);
+  border-radius:10px;
+}
+
+.scroll::-webkit-scrollbar-thumb:hover{
+  background:rgba(34,197,94,.7);
+}
+
+.scroll{
+  max-height:350px;
+  overflow:auto;
+}
+
+#mainSystem{
+  display:none;
+}
+
+@media(max-width:1100px){
+  .container{
+    grid-template-columns:1fr;
+  }
+}
+/* ===== LIVE DIGITAL CLOCK ===== */
+
+/* RIGHT CARD FLEX CONTROL */
+.right-card{
+  display:flex;
+  flex-direction:column;
+}
+
+/* Make chart responsive height */
+#attendanceChart{
+  max-height:180px;
+  margin-bottom:15px;
+}
+
+/* Improved Clock */
+.clock-box{
+  margin-top:auto;   /* pushes clock to bottom */
+  padding:57px 20px;
+  border-radius:16px;
+  background:linear-gradient(135deg, rgba(34,197,94,.18), rgba(15,23,42,.6));
+  border:1px solid var(--green-soft);
+  box-shadow:0 0 30px rgba(34,197,94,.2);
+  text-align:center;
+  backdrop-filter:blur(12px);
+
+
+.clock-date{
+  font-size:25px;
+  color:var(--muted);
+  margin-bottom:10px;
+  letter-spacing:1px;
+}
+
+.clock-time{
+  font-size:50px;   /* bigger time */
+  font-weight:700;
+  color:var(--green);
+  letter-spacing:3px;
+  font-family:"Segoe UI",monospace;
+}
+}
+</style>
+</head>
+
+<body>
+
+<!-- ADMIN LOGIN -->
+<div class="card" id="adminLoginCard" style="max-width:400px;margin:auto;">
+  <h3>Admin Login</h3>
+  <form id="adminLoginForm">
+    <input type="text" id="adminUser" placeholder="Username" required>
+    <input type="password" id="adminPass" placeholder="Password" required>
+    <button type="submit">Login</button>
+    <div id="loginMsg" class="small"></div>
+  </form>
+</div>
+
+<div id="mainSystem">
+<div class="container">
+
+<!-- LEFT -->
+<div class="card">
+<header style="display:flex;gap:10px;align-items:center;margin-bottom:18px;" >
+<div class="logo">AI‍</div>
+<div>
+<h1>FACE RECOGNITION</h1>
+<div class="small"><h3>Attendance System • Developed by Arun<h3></div>
+</div>
+</header>
+
+<div class="video-box">
+<video id="video" autoplay playsinline></video>
+<div class="face-frame"></div>
+<div class="scan-h"></div>
+<div class="scan-v"></div>
+</div>
+<div id="statusIcon" style="font-size:50px;"></div>
+<div class="controls">
+<button id="captureBtn">Capture & Verify</button>
+<button id="refreshList" class="secondary">Refresh</button>
+</div>
+
+<div id="result" class="status"></div>
+
+<hr style="margin:20px 0;border-color:var(--border)">
+
+<h2>ADD NEW PERSON</h2>
+<form id="addForm">
+<input id="addName" placeholder="Person Name" required>
+<input type="file" id="addFile" accept="image/*" required>
+<button type="submit">Upload & Train</button>
+<div id="addMsg" class="small"></div>
+</form>
+</div>
+
+<!-- RIGHT -->
+<div class="card">
+<h1>ATTENDANCE DASHBOARD</h1>
+
+<div class="small"><h3>Total Attendance Records<h3></div>
+<div id="liveCount" style="font-size:35px;font-weight:600;margin-bottom:15px;">0</div>
+<div class="scroll">
+    <table>
+      <thead>
+        <tr><th>Name</th><th>Date & Time</th></tr>
+      </thead>
+      <tbody id="attTable"></tbody>
+    </table>
+  </div>
+
+<div class="controls">
+<button id="pdfBtn">Generate PDF</button>
+<button class="secondary">Local Storage</button>
+</div>
+
+<hr style="margin:20px 0;border-color:var(--border)">
+
+<h2>ANALYTICS</h2>
+<div id="analyticsTitle"
+     style="font-size:22px; font-weight:600; margin-bottom:5px;">
+</div>
+<div id="analyticsCount" style="font-size:25px;font-weight:700;color:#22c55e;margin-bottom:15px;"></div>
+<canvas id="attendanceChart" height="120"></canvas> <br>
+<div class="clock-box">
+  <div id="liveDate" class="clock-date"></div>
+  <div id="liveTime" class="clock-time"></div>
+</div>
+</div>
+</div>
+</div>
+<script>
+let currentPerson = null;
+let chart;
+
+/* ================= ADMIN LOGIN ================= */
+
+const ADMIN_USERNAME = "arun";
+const ADMIN_PASSWORD = "123xxx";
+
+adminLoginForm.onsubmit = function(e){
+    e.preventDefault();
+    if(adminUser.value === ADMIN_USERNAME && adminPass.value === ADMIN_PASSWORD){
+        adminLoginCard.style.display = "none";
+        mainSystem.style.display = "block";
+        loadAttendance();
+    }else{
+        loginMsg.innerText = "Invalid credentials!";
+        loginMsg.style.color = "red";
+    }
+};
+
+/* ================= CAMERA SETUP ================= */
+
+const video = document.getElementById("video");
+const result = document.getElementById("result");
+const statusIcon = document.getElementById("statusIcon");
+const table = document.getElementById("attTable");
+const captureBtn = document.getElementById("captureBtn");
+const refreshList = document.getElementById("refreshList");
+const { jsPDF } = window.jspdf;
+
+navigator.mediaDevices.getUserMedia({ video: true })
+.then(stream => video.srcObject = stream);
+
+/* ================= CAPTURE BUTTON ================= */
+
+captureBtn.onclick = async () => {
+
+    result.style.display = "block";
+    result.innerHTML = "Verifying...";
+
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext("2d").drawImage(video, 0, 0);
+
+    const res = await fetch("/recognize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: canvas.toDataURL("image/jpeg") })
+    });
+
+    const j = await res.json();
+
+    console.log("Recognition result:", j.result); // Debug log for result
+
+    /* ======== KNOWN FACE ======== */
+    if (j.success && j.result !== "Unknown") {
+
+    if(j.blink){   // ✅ LIVENESS CHECK
+
+        currentPerson = j.result;
+
+        result.style.background = "rgba(34,197,94,.1)";
+        result.style.border = "1px solid rgba(34,197,94,.4)";
+        result.innerHTML = "✔ Attendance marked for <b>" + j.result + "</b>";
+
+        statusIcon.innerHTML = "✅";
+        statusIcon.style.color = "green";
+
+        loadAttendance();
+
+    } else {
+
+        result.style.background = "rgba(250,204,21,.1)";
+        result.style.border = "1px solid rgba(250,204,21,.4)";
+        result.innerHTML = "⚠ Please Blink Your Eyes!";
+
+        statusIcon.innerHTML = "❌";
+        statusIcon.style.color = "red";
+
+    }
+}
+    /* ======== UNKNOWN FACE ======== */
+    else {
+        console.log("Unknown face detected branch entered."); // Debug log
+
+        result.style.background = "rgba(239,68,68,.1)";
+        result.style.border = "1px solid rgba(239,68,68,.4)";
+        result.innerHTML = "🚫 Unknown Face Detected!";
+
+        playAlertBeep();
+        showUnknownAnalytics();
+    }
+};
+
+/* ================= ALERT BEEP ================= */
+
+function playAlertBeep() {
+    console.log("Playing beep sound...");  // Debug log
+    try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+
+        oscillator.type = "sine";
+        oscillator.frequency.setValueAtTime(1000, audioCtx.currentTime);
+        gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + 0.5);
+
+        console.log("Beep sound played.");  // Debug log
+    } catch (e) {
+        console.error("Beep sound error:", e);
+    }
+}
+
+/* ================= LOAD ATTENDANCE ================= */
+
+async function loadAttendance(){
+
+    const res = await fetch("/attendance");
+    const rows = await res.json();
+
+    table.innerHTML = "";
+
+    rows.slice().reverse().forEach(r=>{
+        table.innerHTML += `<tr><td>${r.Name}</td><td>${r.Timestamp}</td></tr>`;
+    });
+
+    liveCount.innerText = rows.length;
+
+    loadDynamicChart(rows);
+}
+
+/* ================= UNKNOWN ANALYTICS HANDLER ================= */
+
+function showUnknownAnalytics(){
+    console.log("Showing unknown analytics...");  // Debug log
+
+    if(chart){
+        chart.destroy();
+        console.log("Destroyed previous chart.");  // Debug log
+    }
+
+    const ctx = document.getElementById("attendanceChart").getContext("2d");
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+    analyticsTitle.innerText = "Analytics Unavailable";
+    analyticsCount.innerText = "No Record Found for Unknown Face";
+
+    analyticsTitle.style.color = "#ef4444";
+    analyticsCount.style.color = "#ef4444";
+
+    ctx.font = "20px Arial";
+    ctx.fillStyle = "#ef4444";
+    ctx.textAlign = "center";
+    ctx.fillText("No Data Available", ctx.canvas.width / 2, ctx.canvas.height / 2);
+}
+
+/* ================= DYNAMIC CHART LOGIC ================= */
+
+function loadDynamicChart(rows){
+
+    analyticsTitle.style.color = "#22c55e";
+    analyticsCount.style.color = "#22c55e";
+
+    if(rows.length === 0){
+        if(chart) chart.destroy();
+        analyticsTitle.innerText = "";
+        analyticsCount.innerText = "";
+        return;
+    }
+
+    if(chart) chart.destroy();
+
+    const ctx = document.getElementById("attendanceChart").getContext("2d");
+
+    const lastTimestamp = rows[rows.length-1].Timestamp;
+    const lastSession = rows.filter(r => r.Timestamp === lastTimestamp);
+
+    /* ===== MULTIPLE SAME TIME ===== */
+    if(lastSession.length >= 2){
+
+        const counts = {};
+        lastSession.forEach(r=>{
+            counts[r.Name] = (counts[r.Name] || 0) + 1;
+        });
+
+        const labels = Object.keys(counts);
+        const values = Object.values(counts);
+
+        analyticsTitle.innerText = "Attendance Comparison (Latest Session)";
+        analyticsCount.innerText = "Persons in Session: " + lastSession.length;
+
+        chart = new Chart(ctx,{
+            type:"bar",
+            data:{
+                labels:labels,
+                datasets:[{
+                    label:"Total Attendance Count",
+                    data:values,
+                    backgroundColor:"rgba(34,197,94,0.7)",
+                    borderRadius:8
+                }]
+            },
+            options:{
+                responsive:true,
+                plugins:{ legend:{ display:false }},
+                animation:{ duration:1000 },
+                scales:{
+                    y:{ beginAtZero:true, ticks:{ stepSize:1 }}
+                }
+            }
+        });
+
+    }
+    /* ===== SINGLE PERSON ===== */
+    else{
+
+        const personName = lastSession[0].Name;
+        const total = rows.filter(r=>r.Name===personName).length;
+
+        analyticsTitle.innerText = "Analytics for: " + personName;
+        analyticsCount.innerText = "Total Attendance: " + total;
+
+        let labels=[];
+        let values=[];
+
+        for(let i=1;i<=total;i++){
+            labels.push("Visit "+i);
+            values.push(i);
+        }
+
+        const gradient = ctx.createLinearGradient(0,0,0,400);
+        gradient.addColorStop(0,"rgba(34,197,94,0.6)");
+        gradient.addColorStop(1,"rgba(34,197,94,0.05)");
+
+        chart = new Chart(ctx,{
+            type:"line",
+            data:{
+                labels:labels,
+                datasets:[{
+                    label:personName+" Attendance Growth",
+                    data:values,
+                    borderColor:"#22c55e",
+                    backgroundColor:gradient,
+                    fill:true,
+                    tension:0.4,
+                    borderWidth:3
+                }]
+            },
+            options:{
+                responsive:true,
+                animation:{ duration:1000 },
+                scales:{
+                    y:{ beginAtZero:true, ticks:{ stepSize:1 }}
+                }
+            }
+        });
+    }
+}
+
+/* ================= REFRESH BUTTON ================= */
+
+refreshList.onclick = async ()=>{
+    refreshList.innerText="Refreshing...";
+    refreshList.disabled=true;
+
+    await loadAttendance();
+
+    refreshList.innerText="Refresh";
+    refreshList.disabled=false;
+};
+
+/* ================= ADD FACE ================= */
+
+addForm.onsubmit = async e=>{
+    e.preventDefault();
+    const fd = new FormData();
+    fd.append("name", addName.value);
+    fd.append("file", addFile.files[0]);
+
+    addMsg.innerText="Uploading...";
+
+    const r = await fetch("/add_face",{method:"POST",body:fd});
+    addMsg.innerText=(await r.json()).success
+    ? "Training completed successfully"
+    : "Error during upload";
+};
+
+/* ================= PDF GENERATION ================= */
+
+document.getElementById("pdfBtn").onclick = async ()=>{
+
+    const res = await fetch("/attendance");
+    const rows = await res.json();
+
+    if(rows.length===0){
+        alert("No attendance found!");
+        return;
+    }
+
+    const doc = new jsPDF();
+
+    doc.setFontSize(16);
+    doc.text("Face Recognition Attendance",14,15);
+
+    doc.setFontSize(11);
+    doc.text("Generated: "+new Date().toLocaleString(),14,22);
+
+    let y=32;
+
+    doc.text("Name",14,y);
+    doc.text("Date & Time",90,y);
+    y+=8;
+
+    rows.forEach(r=>{
+        if(y>270){ doc.addPage(); y=20; }
+        doc.text(r.Name,14,y);
+        doc.text(r.Timestamp,90,y);
+        y+=8;
+    });
+
+    doc.save("attendance_report.pdf");
+};
+
+/* ================= LIVE CLOCK ================= */
+
+function updateClock(){
+
+    const now=new Date();
+
+    const dateString=now.toLocaleDateString(undefined,{
+        weekday:'long',
+        year:'numeric',
+        month:'long',
+        day:'numeric'
+    });
+
+    const timeString=now.toLocaleTimeString(undefined,{
+        hour:'2-digit',
+        minute:'2-digit',
+        second:'2-digit'
+    });
+
+    document.getElementById("liveDate").innerText=dateString;
+    document.getElementById("liveTime").innerText=timeString;
+}
+
+setInterval(updateClock,1000);
+updateClock();
+</script>
+
+</body>
+</html> 
